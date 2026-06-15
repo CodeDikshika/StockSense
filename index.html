@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StockSense AI — NSE/BSE Stock Screener with AI Insights (Demo)</title>
+<link rel="stylesheet" href="styles.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+</head>
+<body>
+
+<!-- ── MODAL: Required params ── -->
+<div class="modal-overlay" id="req-modal">
+  <div class="modal-box">
+    <div class="modal-title">⚠️ Required Parameters Disabled</div>
+    <div class="modal-body">
+      The following parameters are marked <strong style="color:var(--red)">Required</strong> but are <strong>disabled</strong>. Enable them or change to Optional before proceeding.
+      <div style="background:var(--surface2);border-radius:var(--radius-sm);padding:12px;margin:12px 0;font-size:12px;line-height:2" id="modal-params-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" onclick="document.getElementById('req-modal').classList.remove('show')">Got it — Fix them</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── DETAIL PANEL ── -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail()"></div>
+<div class="detail-panel" id="detail-panel">
+  <button class="detail-close" onclick="closeDetail()">✕</button>
+  <div id="detail-content"></div>
+</div>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-brand">
+    <span class="dot"></span>StockSense
+    <span class="live-badge" style="background:var(--accent-dim);color:var(--accent);border-color:rgba(79,142,247,0.3);animation:none">DEMO</span>
+    <span style="font-size:10px;color:var(--text3);padding:2px 6px;background:var(--surface2);border:1px solid var(--border);border-radius:4px">NSE/BSE</span>
+    <span style="font-size:10px;font-weight:700;color:var(--purple);padding:2px 7px;background:var(--purple-dim);border:1px solid rgba(167,139,250,0.3);border-radius:4px;display:flex;align-items:center;gap:3px">✨ AI-Assisted</span>
+  </div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" id="tab-p1" onclick="navToScreener()">Screener &amp; Tools</button>
+    <button class="nav-tab" id="tab-p2" onclick="tryShowPage2()">Parameters &amp; Portfolio</button>
+  </div>
+  <div class="nav-right">
+    <span style="font-size:11px;color:var(--text3)">Horizon:</span>
+    <div class="horizon-toggle">
+      <button class="ht-btn active" id="ht-long" onclick="setHorizon('long')">Long term</button>
+      <button class="ht-btn" id="ht-short" onclick="setHorizon('short')">Short term</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE 1 — Screener & Tools
+═══════════════════════════════════════════════════════ -->
+<div class="page active" id="p1">
+<div class="container">
+
+  <!-- Index bar -->
+  <div class="index-bar" id="index-bar">
+    <div class="index-item"><div class="index-name">NIFTY 50</div><div class="index-val" id="idx-nifty">—</div><div class="index-chg" id="idx-nifty-chg">—</div></div>
+    <div class="index-item"><div class="index-name">SENSEX</div><div class="index-val" id="idx-sensex">—</div><div class="index-chg" id="idx-sensex-chg">—</div></div>
+    <div class="index-item"><div class="index-name">NIFTY BANK</div><div class="index-val" id="idx-bank">—</div><div class="index-chg" id="idx-bank-chg">—</div></div>
+    <div class="index-item"><div class="index-name">NIFTY IT</div><div class="index-val" id="idx-it">—</div><div class="index-chg" id="idx-it-chg">—</div></div>
+    <div style="margin-left:auto;align-self:center;font-size:10px;color:var(--text3)" id="last-refresh-time">—</div>
+  </div>
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">Stock Screener</div>
+      <div class="page-sub">Search any NSE/BSE stock — simulated market data for demo purposes</div>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="metrics-row">
+    <div class="metric"><div class="metric-label">Watchlist</div><div class="metric-val" id="m-total">0</div><div class="metric-sub">stocks added</div></div>
+    <div class="metric"><div class="metric-label">Fetched</div><div class="metric-val" id="m-fetched" style="color:var(--accent)">0</div><div class="metric-sub">data loaded</div></div>
+    <div class="metric"><div class="metric-label">Passed</div><div class="metric-val" id="m-passed" style="color:var(--green)">—</div><div class="metric-sub">all required params</div></div>
+    <div class="metric"><div class="metric-label">Avg score</div><div class="metric-val" id="m-avg" style="color:var(--amber)">—</div><div class="metric-sub">composite (0–100)</div></div>
+    <div class="metric"><div class="metric-label">Active params</div><div class="metric-val" id="m-params" style="color:var(--purple)">—</div><div class="metric-sub">of 10 total</div></div>
+  </div>
+
+  <div class="two-col">
+
+    <!-- LEFT: Search + Results -->
+    <div class="sticky-sidebar">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Add stocks to screen</div>
+
+        <!-- Search box -->
+        <div class="search-box-wrap" style="margin-bottom:12px;max-width:100%">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="stock-search" placeholder="Search symbol or name (e.g. RELIANCE, TCS, INFY…)" autocomplete="off"
+            oninput="onSearchInput(this.value)" onkeydown="onSearchKey(event)">
+          <div class="autocomplete-dropdown" id="autocomplete"></div>
+        </div>
+
+        <!-- Preset Nifty indices -->
+        <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Add preset index constituents:</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-sm" onclick="loadPreset('nifty50')">Nifty 50</button>
+          <button class="btn btn-sm" onclick="loadPreset('nifty100')">Nifty 100</button>
+          <button class="btn btn-sm" onclick="loadPreset('niftyIT')">Nifty IT</button>
+          <button class="btn btn-sm" onclick="loadPreset('niftyBank')">Nifty Bank</button>
+          <button class="btn btn-sm" onclick="loadPreset('niftyPharma')">Nifty Pharma</button>
+          <button class="btn btn-sm btn-danger" onclick="clearWatchlist()">✕ Clear all</button>
+        </div>
+
+        <!-- Watchlist chips -->
+        <div class="watchlist-wrap" id="watchlist-chips">
+          <span style="font-size:12px;color:var(--text3)">No stocks added yet</span>
+        </div>
+
+        <button class="btn btn-primary" style="width:100%;margin-bottom:8px" id="run-btn" onclick="runScreen()">▶ Fetch &amp; Run Screen</button>
+
+        <div class="data-source-note">
+          🧪 <strong>Demo mode:</strong> This build uses a deterministic simulated data engine (no live network calls) — CMP, P/E, 52W high/low, volume, sector, RSI, MACD signal, and sentiment score are all generated locally per symbol. D/E, face value &amp; future score still require manual input (see Parameters tab).<br>
+          ⚠️ For demonstration/portfolio purposes only. Not real market data — not financial advice. <span id="proxy-status" style="color:var(--text3)"></span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Results <span id="result-count" style="font-size:11px;font-weight:400;color:var(--text3)"></span></div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div class="legend-row"><div class="legend-dot" style="background:#34d399"></div>75+ Strong</div>
+          <div class="legend-row"><div class="legend-dot" style="background:#4f8ef7"></div>55–74 Consider</div>
+          <div class="legend-row"><div class="legend-dot" style="background:#fbbf24"></div>35–54 Watch</div>
+          <div class="legend-row"><div class="legend-dot" style="background:#f87171"></div>&lt;35 Avoid</div>
+        </div>
+        <div class="filter-row">
+          <button class="filter-chip active" onclick="setFilter('all',this)">All</button>
+          <button class="filter-chip" onclick="setFilter('passed',this)">Passed only</button>
+          <button class="filter-chip" onclick="setFilter('strong',this)">Strong buy</button>
+          <button class="filter-chip" onclick="setFilter('consider',this)">Consider+</button>
+        </div>
+        <div id="stock-list">
+          <div class="empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 3v18h18"/><path d="m7 12 4-4 4 4 4-4"/></svg>
+            <p>Add stocks above, then click "Fetch &amp; Run Screen"</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Calculator + Scoring guide -->
+    <div>
+      <div class="card">
+        <div class="card-title">Investment Calculator</div>
+        <div class="calc-tabs">
+          <button class="calc-tab active" onclick="setCalcTab(0)" id="ct0">Lump Sum</button>
+          <button class="calc-tab" onclick="setCalcTab(1)" id="ct1">SIP / DCA</button>
+          <button class="calc-tab" onclick="setCalcTab(2)" id="ct2">Fair Value</button>
+          <button class="calc-tab" onclick="setCalcTab(3)" id="ct3">CAGR Finder</button>
+        </div>
+
+        <!-- Calc 0 -->
+        <div id="calc-0">
+          <div class="two-even" style="margin-bottom:12px">
+            <div><label class="field-label">Amount (₹)</label><input type="number" id="c0-amt" value="100000" oninput="calcLump()"></div>
+            <div><label class="field-label">Annual return %</label><div class="range-row"><input type="range" id="c0-rate" min="5" max="40" value="15" step="1" oninput="document.getElementById('c0-rate-v').textContent=this.value+'%';calcLump()"><span class="range-val" id="c0-rate-v">15%</span></div></div>
+          </div>
+          <div><label class="field-label">Years</label><div class="range-row"><input type="range" id="c0-yrs" min="1" max="30" value="5" step="1" oninput="document.getElementById('c0-yrs-v').textContent=this.value+'y';calcLump()"><span class="range-val" id="c0-yrs-v">5y</span></div></div>
+          <hr>
+          <div class="two-even"><div><div style="font-size:11px;color:var(--text3)">Corpus</div><div class="result-big" id="c0-result">—</div></div><div><div style="font-size:11px;color:var(--text3)">Gain</div><div class="result-big" id="c0-gain" style="color:var(--green)">—</div></div></div>
+          <div style="position:relative;height:170px;margin-top:14px"><canvas id="chart-lump"></canvas></div>
+        </div>
+
+        <!-- Calc 1 -->
+        <div id="calc-1" style="display:none">
+          <div class="two-even" style="margin-bottom:12px">
+            <div><label class="field-label">Monthly SIP (₹)</label><input type="number" id="c1-monthly" value="5000" oninput="calcSIP()"></div>
+            <div><label class="field-label">Annual return %</label><div class="range-row"><input type="range" id="c1-rate" min="5" max="30" value="12" step="1" oninput="document.getElementById('c1-rate-v').textContent=this.value+'%';calcSIP()"><span class="range-val" id="c1-rate-v">12%</span></div></div>
+          </div>
+          <div><label class="field-label">Duration (years)</label><div class="range-row"><input type="range" id="c1-yrs" min="1" max="30" value="10" step="1" oninput="document.getElementById('c1-yrs-v').textContent=this.value+'y';calcSIP()"><span class="range-val" id="c1-yrs-v">10y</span></div></div>
+          <hr>
+          <div class="three-col">
+            <div class="card-sm"><div class="metric-label">Invested</div><div style="font-size:16px;font-weight:700;margin-top:3px" id="c1-invested">—</div></div>
+            <div class="card-sm"><div class="metric-label">Corpus</div><div style="font-size:16px;font-weight:700;margin-top:3px;color:var(--green)" id="c1-corpus">—</div></div>
+            <div class="card-sm"><div class="metric-label">Wealth gained</div><div style="font-size:16px;font-weight:700;margin-top:3px;color:var(--accent)" id="c1-gain">—</div></div>
+          </div>
+          <div style="position:relative;height:170px;margin-top:14px"><canvas id="chart-sip"></canvas></div>
+        </div>
+
+        <!-- Calc 2 -->
+        <div id="calc-2" style="display:none">
+          <div class="two-even" style="margin-bottom:12px">
+            <div><label class="field-label">EPS (₹)</label><input type="number" id="c2-eps" value="50" oninput="calcFair()"></div>
+            <div><label class="field-label">Growth %/yr</label><input type="number" id="c2-growth" value="15" oninput="calcFair()"></div>
+            <div><label class="field-label">Discount rate %</label><input type="number" id="c2-discount" value="10" oninput="calcFair()"></div>
+            <div><label class="field-label">CMP (₹)</label><input type="number" id="c2-cmp" value="900" oninput="calcFair()"></div>
+          </div>
+          <hr>
+          <div class="two-even">
+            <div><div style="font-size:11px;color:var(--text3)">Graham fair value</div><div class="result-big" id="c2-fv">—</div></div>
+            <div><div style="font-size:11px;color:var(--text3)">Margin of safety</div><div class="result-big" id="c2-mos">—</div></div>
+          </div>
+          <div id="c2-verdict" style="display:none" class="verdict verdict-green"></div>
+          <div class="info-tip" style="margin-top:8px">Graham: EPS × (8.5 + 2g) × 4.4 / discount. Educational only.</div>
+        </div>
+
+        <!-- Calc 3 -->
+        <div id="calc-3" style="display:none">
+          <div class="two-even" style="margin-bottom:12px">
+            <div><label class="field-label">Initial value (₹)</label><input type="number" id="c3-initial" value="100000" oninput="calcCAGR()"></div>
+            <div><label class="field-label">Final value (₹)</label><input type="number" id="c3-final" value="250000" oninput="calcCAGR()"></div>
+            <div><label class="field-label">Years</label><input type="number" id="c3-yrs" value="5" oninput="calcCAGR()"></div>
+            <div><label class="field-label">Benchmark CAGR %</label><input type="number" id="c3-bench" value="12" oninput="calcCAGR()"><div class="info-tip">e.g. Nifty 50 ~12%</div></div>
+          </div>
+          <hr>
+          <div class="two-even">
+            <div><div style="font-size:11px;color:var(--text3)">Your CAGR</div><div class="result-big" id="c3-cagr">—</div></div>
+            <div><div style="font-size:11px;color:var(--text3)">vs Benchmark</div><div class="result-big" id="c3-diff">—</div></div>
+          </div>
+          <div id="c3-verdict" style="display:none" class="verdict verdict-green"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">How scoring works</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">
+          Each enabled parameter contributes a weighted score. <strong style="color:var(--text)">Horizon</strong> adjusts weights — long-term favours fundamentals (P/E, D/E, future pipeline); short-term favours technicals (MACD, RSI, volume).
+          <br><br>
+          <span class="badge badge-req" style="vertical-align:middle">Required</span> parameters are hard gates — a stock failing any required param is excluded from the "Passed" count and dimmed.
+          <br><br>
+          <span class="badge badge-opt" style="vertical-align:middle">Optional</span> parameters adjust the composite score only.
+          <br><br>
+          <strong style="color:var(--text)">Demo data layout:</strong><br>
+          🧪 Simulated: CMP, day change, P/E, 52W high/low, sector, volume<br>
+          📐 Computed: RSI (14-day proxy), MACD (12/26/9 EMA signal)<br>
+          📊 Approximated: Sentiment (momentum proxy), Avg vol% (vs 3M avg)<br>
+          ✏️ Manual (Parameters tab): D/E, face value, future score<br><br>
+          <strong style="color:var(--text)">✨ AI features:</strong> Click any stock for an AI-style insight summary, use <b>"Generate report"</b> for a portfolio-wide health check, or open the chat assistant (bottom-right) to ask questions about your results.
+        </div>
+      </div>
+
+      <!-- ── AI PORTFOLIO HEALTH REPORT ── -->
+      <div class="card ai-report-card" id="ai-report-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div class="card-title" style="margin-bottom:2px">✨ AI Portfolio Health Report</div>
+            <div style="font-size:11px;color:var(--text3)">An automated read on your screened watchlist</div>
+          </div>
+          <button class="btn btn-sm" id="ai-report-btn" onclick="generateAIReport()" style="background:var(--purple-dim);color:var(--purple);border-color:rgba(167,139,250,0.3)">Generate report</button>
+        </div>
+        <div id="ai-report-body">
+          <div class="ai-report-empty">
+            <p style="font-size:12px">Run the screener, then click <b style="color:var(--text2)">"Generate report"</b> for an AI-style summary of your watchlist's health, risks &amp; standouts.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ── SECTOR LEADERS PANEL ── -->
+      <div class="card" id="sector-leaders-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div>
+            <div class="card-title" style="margin-bottom:2px">🏆 Sector Leaders</div>
+            <div style="font-size:11px;color:var(--text3)">Top-scoring stock from each sector in your watchlist</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:10px;color:var(--text3)">Sort by:</span>
+            <button class="btn btn-sm" id="sl-sort-score" onclick="setSectorSort('score')" style="background:var(--accent-dim);color:var(--accent);border-color:rgba(79,142,247,0.3)">Score</button>
+            <button class="btn btn-sm" id="sl-sort-chg" onclick="setSectorSort('chg')">Day %</button>
+          </div>
+        </div>
+        <div id="sector-leaders-body">
+          <div class="empty" style="padding:24px 0">
+            <p style="font-size:12px">Run the screener to see sector leaders</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     PAGE 2 — Parameters & Portfolio
+═══════════════════════════════════════════════════════ -->
+<div class="page" id="p2">
+<div class="container">
+
+  <div class="page-header">
+    <div>
+      <div class="page-title">Parameters &amp; Portfolio</div>
+      <div class="page-sub">Tune screening logic and manually enter fundamentals for each stock</div>
+    </div>
+    <button class="btn btn-primary" onclick="navToScreener();runScreen()">▶ Apply &amp; Run Screen</button>
+  </div>
+
+  <div class="two-col">
+
+    <!-- LEFT: Params -->
+    <div class="sticky-sidebar">
+      <div class="card" style="margin-bottom:0">
+        <div class="card-title">Screening parameters</div>
+        <p style="font-size:12px;color:var(--text3);margin-bottom:10px">Toggle on/off. Click badge to flip Required ↔ Optional.</p>
+        <div class="status-bar info" id="req-status-bar">
+          <span id="req-status-icon">ℹ️</span>&nbsp;<span id="req-status-text">Loading…</span>
+        </div>
+        <div id="param-list"></div>
+
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div class="section-label">Threshold values</div>
+          <div class="two-even" style="gap:9px">
+            <div><label class="field-label">P/E offset vs sector avg</label><input type="number" id="th-pe" value="0" step="1" oninput="runScreen()"><div class="info-tip">0 = at sector avg, +5 = 5 above avg</div></div>
+            <div><label class="field-label">Max D/E ratio</label><input type="number" id="th-de" value="0.5" step="0.1" oninput="runScreen()"></div>
+            <div><label class="field-label">RSI low bound</label><input type="number" id="th-rsi-l" value="30" oninput="runScreen()"></div>
+            <div><label class="field-label">RSI high bound</label><input type="number" id="th-rsi-h" value="70" oninput="runScreen()"></div>
+            <div><label class="field-label">Min sentiment (0–100)</label><input type="number" id="th-sent" value="50" oninput="runScreen()"></div>
+            <div><label class="field-label">Min volume (L/day)</label><input type="number" id="th-vol" value="2" oninput="runScreen()"></div>
+            <div><label class="field-label">52W high proximity %</label><input type="number" id="th-wk52" value="20" oninput="runScreen()"><div class="info-tip">Max % below 52W high</div></div>
+            <div><label class="field-label">Min avg vol % vs 3M</label><input type="number" id="th-avgvol" value="80" oninput="runScreen()"></div>
+            <div><label class="field-label">Min future score</label><input type="number" id="th-future" value="60" oninput="runScreen()"><div class="info-tip">Set manually per stock below</div></div>
+            <div><label class="field-label">Max face value (₹)</label><input type="number" id="th-fv" value="10" oninput="runScreen()"></div>
+          </div>
+        </div>
+
+        <!-- Manual fundamentals override per stock -->
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+          <div class="section-label">Manual fundamentals override</div>
+          <p style="font-size:11px;color:var(--text3);margin-bottom:10px">Enter D/E, face value &amp; future score for stocks in your watchlist (not available from free API).</p>
+          <div id="manual-fundamentals-list">
+            <div style="font-size:12px;color:var(--text3)">Add stocks to your watchlist first.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Portfolio -->
+    <div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin-bottom:0">My Portfolio</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="refreshPortfolioPrices()">↺ Refresh prices</button>
+            <button class="btn btn-primary btn-sm" onclick="toggleAddForm()">+ Add Stock</button>
+          </div>
+        </div>
+
+        <div class="add-form" id="add-form">
+          <div class="section-label" style="margin-bottom:8px">Add a holding</div>
+          <div class="add-form-grid">
+            <div><label class="field-label">NSE Ticker</label><input type="text" id="pf-ticker" placeholder="RELIANCE" style="text-transform:uppercase"></div>
+            <div><label class="field-label">Quantity</label><input type="number" id="pf-qty" placeholder="10"></div>
+            <div><label class="field-label">Buy price (₹)</label><input type="number" id="pf-buy" placeholder="2800"></div>
+            <div><label class="field-label">Target price (₹)</label><input type="number" id="pf-target" placeholder="3200"></div>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-primary btn-sm" onclick="addStock()">Add</button>
+            <button class="btn btn-sm" onclick="toggleAddForm()">Cancel</button>
+          </div>
+        </div>
+
+        <div id="pf-summary-cards" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px"></div>
+        <div id="pf-table-wrap">
+          <div class="empty">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 6h18M7 6V4h10v2M19 6l-1 14H6L5 6"/></svg>
+            <p>No holdings yet</p>
+          </div>
+        </div>
+      </div>
+      <div class="card" id="pf-chart-card" style="display:none">
+        <div class="card-title">Portfolio allocation</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:center">
+          <div style="position:relative;height:190px"><canvas id="pf-pie"></canvas></div>
+          <div id="pf-legend" style="font-size:12px"></div>
+        </div>
+      </div>
+      <div class="card" id="pf-sector-card" style="display:none">
+        <div class="card-title">P&amp;L by holding</div>
+        <div style="position:relative;height:190px"><canvas id="pf-bar"></canvas></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- ── AI CHAT ASSISTANT ── -->
+<button class="ai-chat-fab" id="ai-chat-fab" onclick="toggleAIChat()" title="Ask the AI assistant">
+  💬<span class="ai-chat-dot"></span>
+</button>
+<div class="ai-chat-window" id="ai-chat-window">
+  <div class="ai-chat-header">
+    <div class="ai-chat-title"><span class="ai-spark">✨</span> StockSense AI Assistant</div>
+    <button class="ai-chat-close" onclick="toggleAIChat()">✕</button>
+  </div>
+  <div class="ai-chat-messages" id="ai-chat-messages"></div>
+  <div class="ai-chat-suggestions" id="ai-chat-suggestions"></div>
+  <div class="ai-chat-input-row">
+    <input type="text" id="ai-chat-input" placeholder="Ask e.g. 'Why is TCS rated Avoid?'" onkeydown="onAIChatKey(event)">
+    <button onclick="sendAIChatMessage()">Send</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
